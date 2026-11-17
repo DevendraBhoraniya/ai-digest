@@ -99,3 +99,6 @@ playground/*.png
 app/google-service-account.json
 .neon
 node_modules/
+
+# AI tooling
+.opencode/
