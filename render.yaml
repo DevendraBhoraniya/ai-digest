@@ -1,0 +1,16 @@
+services:
+  - type: cron
+    name: ai-news-digest
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py --run-once"
+    schedule: "0 8 * * *"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: DIGEST_RECIPIENT_EMAIL
+        sync: false
