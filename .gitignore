@@ -102,3 +102,7 @@ node_modules/
 
 # AI tooling
 .opencode/
+
+# local dev
+plan.md
+docker/
