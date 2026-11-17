@@ -5,14 +5,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from app.runner import run_youtube_scrape, run_transcript_backfill
+from app.runner import run_youtube_scrape
 from app.services.digest import run_digest
 from app.services.email import send_digest
 
 
 def run_once():
     videos = run_youtube_scrape()
-    run_transcript_backfill()
     html = run_digest(hours=24)
     to = os.getenv("DIGEST_RECIPIENT_EMAIL")
     if to:

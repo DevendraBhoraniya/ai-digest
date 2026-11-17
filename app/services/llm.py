@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-INTERESTS_PATH = Path("app/prompts/interests.txt")
+INTERESTS_PATH = Path(__file__).resolve().parent.parent / "prompts" / "interests.txt"
 API_KEY = os.getenv("GEMINI_API_KEY", "")
 MODEL = "gemini-3.5-flash"
 URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
@@ -65,18 +65,22 @@ def summarize_articles(articles: list[dict]) -> list[dict]:
     }
     r = requests.post(URL, headers=headers, json=body, timeout=120)
     r.raise_for_status()
-    data = r.json()
-    # extract text from steps
+    return _parse_response(r.json())
+
+
+def _parse_response(data: dict) -> list[dict]:
+    """Extract digest items from a Gemini response, or [] if unusable."""
     text = ""
-    for step in data.get("steps", []):
+    for step in data.get("steps") or []:
         if step.get("type") == "model_output":
             for c in step.get("content", []):
                 if c.get("type") == "text":
                     text += c.get("text", "")
     if not text:
-        text = data.get("output_text", "")
+        text = data.get("output_text") or ""
     try:
         parsed = json.loads(text)
-        return parsed.get("items", [])
-    except Exception:
+    except (TypeError, ValueError):
         return []
+    items = parsed.get("items") if isinstance(parsed, dict) else None
+    return items if isinstance(items, list) else []

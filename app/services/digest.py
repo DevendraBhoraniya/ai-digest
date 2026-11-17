@@ -1,5 +1,6 @@
 """Daily digest builder: collect, summarize, render HTML."""
 
+import html
 from datetime import datetime, timezone
 
 from app.database.repository import get_recent_videos
@@ -27,11 +28,14 @@ def collect_articles(hours: int = 24) -> list[dict]:
 def render_digest(items: list[dict]) -> str:
     cards = []
     for it in items:
+        url = html.escape(it["url"])
+        title = html.escape(it["title"])
+        snippet = html.escape(it["snippet"])
         cards.append(
             f"""<tr><td style="padding:12px 0;border-bottom:1px solid #eee;">
-  <a href="{it['url']}" style="font-size:16px;font-weight:600;color:#111;text-decoration:none;">{it['title']}</a>
-  <p style="margin:6px 0;color:#444;font-size:14px;line-height:1.5;">{it['snippet']}</p>
-  <a href="{it['url']}" style="font-size:13px;color:#2563eb;">Read more →</a>
+  <a href="{url}" style="font-size:16px;font-weight:600;color:#111;text-decoration:none;">{title}</a>
+  <p style="margin:6px 0;color:#444;font-size:14px;line-height:1.5;">{snippet}</p>
+  <a href="{url}" style="font-size:13px;color:#2563eb;">Read more →</a>
 </td></tr>"""
         )
     rows = "\n".join(cards) if cards else '<tr><td style="padding:12px 0;color:#666;">No new articles today.</td></tr>'

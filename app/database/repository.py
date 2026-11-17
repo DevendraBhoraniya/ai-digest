@@ -8,6 +8,9 @@ from app.database.models import YouTubeVideo
 def upsert_video(session: Session, video) -> YouTubeVideo:
     existing = session.query(YouTubeVideo).filter_by(url=video.url).first()
     if existing:
+        existing.title = video.title
+        existing.description = video.description or ""
+        session.commit()
         return existing
     row = YouTubeVideo(
         channel_id=video.channel_id if hasattr(video, "channel_id") else "",

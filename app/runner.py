@@ -47,5 +47,3 @@ def run_transcript_backfill(limit=None) -> dict:
 if __name__ == "__main__":
     videos = run_youtube_scrape()
     print(f"scraped {len(videos)} videos")
-    info = run_transcript_backfill()
-    print(f"transcripts processed: {info['processed']}")
