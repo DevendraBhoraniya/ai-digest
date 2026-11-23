@@ -1,0 +1,49 @@
+name: CI
+
+# The repository has no configured remote, so the default branch could not be
+# confirmed from git metadata. The known branch in this checkout is "master";
+# update these filters if the GitHub default branch differs.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.15"
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Check lockfile is up to date
+        run: uv lock --check
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Compile
+        run: uv run python -m compileall -q app main.py
+
+      - name: Test
+        run: uv run pytest

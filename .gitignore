@@ -58,6 +58,8 @@ target/
 
 # DotEnv configuration
 .env
+.env.*
+!.env.example
 
 # Database
 *.db
@@ -88,6 +90,11 @@ target/
 
 # Virtual environment
 .venv/
+.venv*/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
 
 # Alembic migrations
 app/alembic/versions/*

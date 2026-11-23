@@ -1,3 +1,5 @@
+"""Fetch recent YouTube uploads from a channel's public RSS feed."""
+
 from __future__ import annotations
 
 import logging
@@ -6,10 +8,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import feedparser
+import requests
 
-from app.services.youtube import get_transcript
+from app.config import HTTP_TIMEOUT_SECONDS
 
 logger = logging.getLogger(__name__)
+
+FEED_URL = "https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+USER_AGENT = "ai-news-aggregator/0.1 (+https://github.com/)"
 
 
 @dataclass
@@ -34,12 +40,31 @@ class YouTubeScraper:
             return video_url.split("youtu.be/")[1].split("?")[0]
         return video_url
 
-    def get_latest_videos(self, channel_id: str, hours: int = 24) -> list[ChannelVideo]:
-        feed = feedparser.parse(
-            f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+    @staticmethod
+    def _load_feed(channel_id: str):
+        """Download and parse a channel feed. Network errors propagate to the caller."""
+        response = requests.get(
+            FEED_URL.format(channel_id=channel_id),
+            timeout=HTTP_TIMEOUT_SECONDS,
+            headers={"User-Agent": USER_AGENT},
         )
+        response.raise_for_status()
+        return feedparser.parse(response.content)
+
+    def get_latest_videos(self, channel_id: str, hours: int = 24) -> list[ChannelVideo]:
+        """Return the channel's uploads published within ``hours``.
+
+        Raises when the feed cannot be fetched or is malformed with no usable
+        entries, so callers can record a channel-level failure instead of
+        treating it as "no new videos".
+        """
+        feed = self._load_feed(channel_id)
         if not feed.entries:
+            if getattr(feed, "bozo", False):
+                raise ValueError(f"malformed feed for channel {channel_id}")
+            logger.info("no entries in feed for channel %s", channel_id)
             return []
+
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         videos = []
         for entry in feed.entries:
@@ -47,7 +72,9 @@ class YouTubeScraper:
                 continue
             published_parsed = getattr(entry, "published_parsed", None)
             if not published_parsed:
-                logger.warning("skipping entry without published_parsed: %s", entry.get("link", "?"))
+                logger.warning(
+                    "skipping entry without published_parsed: %s", entry.get("link", "?")
+                )
                 continue
             published = datetime(*published_parsed[:6], tzinfo=timezone.utc)
             if published >= cutoff:
@@ -63,17 +90,11 @@ class YouTubeScraper:
                 )
         return videos
 
-    def scrape_channel(self, channel_id: str, hours: int = 24) -> list[ChannelVideo]:
-        videos = self.get_latest_videos(channel_id, hours)
-        result = []
-        for video in videos:
-            video.transcript = get_transcript(video.video_id) or None
-            result.append(video)
-        return result
-
 
 if __name__ == "__main__":
-    scraper = YouTubeScraper()
-    videos = scraper.scrape_channel("UCn8ujwUInbJkBhffxqAPBVQ", hours=200)
-    for v in videos:
-        print(v.title, "|", v.url, "|", v.published_at.isoformat())
+    import sys
+
+    logging.basicConfig(level=logging.INFO)
+    channel = sys.argv[1] if len(sys.argv) > 1 else "UCn8ujwUInbJkBhffxqAPBVQ"
+    for video in YouTubeScraper().get_latest_videos(channel, hours=48):
+        print(video.title, "|", video.url, "|", video.published_at.isoformat())

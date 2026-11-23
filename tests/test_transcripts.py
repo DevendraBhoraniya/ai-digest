@@ -1,3 +1,5 @@
+from tenacity import wait_none
+
 from app.services import youtube as youtube_service
 
 
@@ -22,6 +24,10 @@ class _FakeApi:
         return result
 
 
+def _no_wait(monkeypatch):
+    monkeypatch.setattr(youtube_service._fetch_with_retry.retry, "wait", wait_none())
+
+
 def test_falls_back_to_next_language(monkeypatch):
     api = _FakeApi({"en": RuntimeError("no en"), "en-US": _Fetched("hello", "world")})
     monkeypatch.setattr(youtube_service, "_new_api", lambda: api)
@@ -41,7 +47,35 @@ def test_empty_video_id_returns_empty_string():
     assert youtube_service.get_transcript("") == ""
 
 
-def test_scraper_uses_canonical_implementation():
-    from app.scrapers.youtube import get_transcript as scraper_get_transcript
+def test_transient_errors_retry_three_times_per_language(monkeypatch):
+    _no_wait(monkeypatch)
+    api = _FakeApi({"en": OSError("net"), "en-US": OSError("net"), "a.en": OSError("net")})
+    monkeypatch.setattr(youtube_service, "_new_api", lambda: api)
 
-    assert scraper_get_transcript is youtube_service.get_transcript
+    assert youtube_service.get_transcript("vid") == ""
+    assert len(api.attempted) == 9
+    assert api.attempted.count("en") == 3
+
+
+def test_permanent_errors_are_not_retried(monkeypatch):
+    _no_wait(monkeypatch)
+    api = _FakeApi(
+        {
+            "en": RuntimeError("disabled"),
+            "en-US": RuntimeError("disabled"),
+            "a.en": RuntimeError("disabled"),
+        }
+    )
+    monkeypatch.setattr(youtube_service, "_new_api", lambda: api)
+
+    assert youtube_service.get_transcript("vid") == ""
+    assert api.attempted == ["en", "en-US", "a.en"]
+
+
+def test_empty_transcript_falls_through_languages(monkeypatch):
+    _no_wait(monkeypatch)
+    api = _FakeApi({"en": _Fetched(""), "en-US": _Fetched("  "), "a.en": _Fetched("hello")})
+    monkeypatch.setattr(youtube_service, "_new_api", lambda: api)
+
+    assert youtube_service.get_transcript("vid") == "hello"
+    assert api.attempted == ["en", "en-US", "a.en"]
