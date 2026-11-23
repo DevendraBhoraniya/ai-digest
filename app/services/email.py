@@ -12,8 +12,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-resend.api_key = os.getenv("RESEND_API_KEY", "")
-RESEND_FROM = os.getenv("RESEND_FROM", "onboarding@resend.dev")
+resend.api_key = (os.getenv("RESEND_API_KEY") or "").strip()
+RESEND_FROM = (os.getenv("RESEND_FROM") or "").strip() or "onboarding@resend.dev"
 
 
 def send_digest(html: str, to_email: str, subject: str = "Daily AI News Digest") -> dict:
