@@ -43,6 +43,7 @@ class CycleResult:
     videos_scraped: int = 0
     transcripts_fetched: int = 0
     channels_failed: int = 0
+    channels_checked: int = 0
     digest_sent: bool = False
     error: str | None = None
 
@@ -146,7 +147,7 @@ def run_cycle() -> CycleResult:
     logged but never replaces the original error.
     """
     result = CycleResult(started_at=datetime.now(timezone.utc))
-    logger.info("cycle started")
+    logger.info("execution started")
     try:
         validate_config()
         recipient = os.environ["DIGEST_RECIPIENT_EMAIL"].strip()
@@ -156,6 +157,7 @@ def run_cycle() -> CycleResult:
         result.videos_scraped = len(scrape["videos"])
         result.transcripts_fetched = scrape["transcripts_fetched"]
         result.channels_failed = len(scrape["channel_failures"])
+        result.channels_checked = scrape["channels_checked"]
         if scrape["channels_checked"] and result.channels_failed == scrape["channels_checked"]:
             raise RuntimeError("all channel feeds failed; digest not sent")
 
@@ -174,12 +176,18 @@ def run_cycle() -> CycleResult:
         except Exception:
             logger.exception("could not write run log")
 
+    duration = 0.0
+    if result.finished_at is not None:
+        duration = (result.finished_at - result.started_at).total_seconds()
     logger.info(
-        "cycle finished status=%s videos=%d transcripts=%d channels_failed=%d digest_sent=%s",
+        "cycle finished status=%s channels_processed=%d videos=%d transcripts=%d "
+        "channels_failed=%d digest_sent=%s duration=%.2fs",
         result.status,
+        result.channels_checked,
         result.videos_scraped,
         result.transcripts_fetched,
         result.channels_failed,
         result.digest_sent,
+        duration,
     )
     return result

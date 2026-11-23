@@ -2,8 +2,8 @@
 
 Daily digest of new AI YouTube videos. The job scrapes a curated set of
 channels, fetches transcripts, summarizes them with Gemini, and emails a
-single HTML digest through Resend. It is built to run unattended as a Render
-Cron Job once a day.
+single HTML digest through Resend. It runs unattended once a day through
+GitHub Actions, with no paid hosting service.
 
 ## Features
 
@@ -18,7 +18,7 @@ Cron Job once a day.
 
 ## Architecture
 
-```
+```text
 main.py --run-once
   -> app.runner.run_cycle()
        validate config
@@ -30,7 +30,7 @@ main.py --run-once
 ```
 
 - `app/runner.py` is the single orchestration path used by both
-  `main.py --run-once` and the scheduler.
+  `main.py --run-once` and the local scheduler.
 - `app/database/` holds SQLAlchemy models, sessions and repositories.
 - `app/scrapers/youtube.py` fetches channel RSS feeds.
 - `app/services/` holds transcript, Gemini, digest and email logic.
@@ -50,7 +50,7 @@ main.py --run-once
 
 ## Project structure
 
-```
+```text
 .
 ├── app/
 │   ├── config.py
@@ -64,8 +64,9 @@ main.py --run-once
 ├── pyproject.toml
 ├── uv.lock
 ├── requirements.txt
-├── render.yaml
-└── .github/workflows/test.yml
+└── .github/workflows/
+    ├── test.yml
+    └── daily-digest.yml
 ```
 
 ## Prerequisites
@@ -76,7 +77,7 @@ main.py --run-once
 - A Google Gemini API key
 - A Resend API key and a verified sender domain
 
-## Local development setup
+## Local installation
 
 ```bash
 git clone <repository-url>
@@ -86,7 +87,7 @@ cp .env.example .env
 # edit .env with your values
 ```
 
-## uv installation
+## uv setup
 
 ```bash
 # macOS / Linux
@@ -96,7 +97,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-## Environment variable configuration
+## Environment variables
 
 Copy `.env.example` to `.env` and fill in the values. Actual variable names
 used by the code:
@@ -111,13 +112,18 @@ used by the code:
 | `RESEND_FROM` | no | Sender address (default `onboarding@resend.dev`) |
 | `PROXY_USERNAME` | no | Webshare proxy username for transcript fetching |
 | `PROXY_PASSWORD` | no | Webshare proxy password |
-| `LOOKBACK_HOURS` | no | Hard-coded to 48 in `app/config.py` |
 
 \* At least one of `DATABASE_URL` / `NEON_DATABASE_URL` is required.
 
-## Database setup
+`YOUTUBE_CHANNELS` is not an environment variable; channels are configured in
+`app/config.py`.
 
-Create the tables once (safe to rerun; never drops data):
+## Neon database setup
+
+1. Create a Neon project and database.
+2. Copy the connection string.
+3. Set it as `DATABASE_URL` or `NEON_DATABASE_URL`.
+4. Create tables (idempotent, non-destructive):
 
 ```bash
 python -m app.database.create_tables
@@ -127,7 +133,21 @@ python -m app.database.create_tables
 migrate existing tables, so changing a model requires a manual SQL migration
 in production.
 
-## Running manually
+## Gemini API setup
+
+1. Create a Google AI Studio API key.
+2. Set `GEMINI_API_KEY`.
+3. Keep the key secret; it is never logged.
+
+## Resend setup
+
+1. Create a Resend API key.
+2. Verify a sender domain (or use the default `onboarding@resend.dev` for
+   testing).
+3. Set `RESEND_API_KEY` and optionally `RESEND_FROM`.
+4. Set `DIGEST_RECIPIENT_EMAIL`.
+
+## Running locally
 
 Run a single digest cycle and exit:
 
@@ -144,44 +164,55 @@ Run the blocking daily scheduler (8:00 UTC by default):
 python main.py --serve
 ```
 
-## Running tests
+## Running manually once
 
 ```bash
-uv run pytest
+uv run python main.py --run-once
 ```
 
-Tests use in-memory SQLite and mocked network boundaries. They do not send
-real emails or call paid APIs.
+## GitHub Actions scheduling
 
-## Linting and formatting
+`.github/workflows/daily-digest.yml` runs the digest once a day:
 
-```bash
-uv run ruff check .
-uv run ruff format --check .
-```
+- Schedule: `30 2 * * *` (08:00 IST / 02:30 UTC).
+- Manual trigger: `workflow_dispatch`.
+- Command: `uv run python main.py --run-once`.
+- Timeout: 30 minutes.
+- Concurrency group `daily-digest` with `cancel-in-progress: false`.
 
-## Render deployment instructions
+GitHub Actions scheduling is not guaranteed to start at the exact scheduled
+minute; runs may start a few minutes late depending on runner availability.
 
-`render.yaml` defines a cron job:
+## Manual workflow execution
 
-- Runtime: Python
-- Build command: `pip install --no-cache-dir -r requirements.txt`
-- Start command: `python main.py --run-once`
-- Schedule: `0 8 * * *` (08:00 UTC)
-- Python version: `3.12.10` (`PYTHON_VERSION`)
+1. Open the repository on GitHub.
+2. Go to **Actions**.
+3. Select **Daily Digest**.
+4. Click **Run workflow**.
+5. Confirm the run starts and completes.
 
-Set these in the Render dashboard (never commit them):
+## GitHub Secrets configuration
 
-- `DATABASE_URL` (or `NEON_DATABASE_URL`)
+Configure secrets at:
+
+GitHub Repository → Settings → Secrets and variables → Actions → New repository secret.
+
+Required secrets:
+
+- `DATABASE_URL` or `NEON_DATABASE_URL`
 - `GEMINI_API_KEY`
 - `RESEND_API_KEY`
-- `RESEND_FROM`
 - `DIGEST_RECIPIENT_EMAIL`
-- `PROXY_USERNAME` / `PROXY_PASSWORD` (optional)
 
-The cron job exits non-zero on failure, so Render marks the run as failed.
+Optional secrets:
 
-## GitHub Actions CI
+- `RESEND_FROM`
+- `PROXY_USERNAME`
+- `PROXY_PASSWORD`
+
+Never commit secrets. Never print secret values in logs.
+
+## CI workflow
 
 `.github/workflows/test.yml` runs on pushes and pull requests to `master`:
 
@@ -200,7 +231,23 @@ not be verified from git metadata. The workflow targets `master`, the branch
 present in this checkout. Update the filters if your GitHub default branch
 differs.
 
-## Failure handling and logging
+## Running tests
+
+```bash
+uv run pytest
+```
+
+Tests use in-memory SQLite and mocked network boundaries. They do not send
+real emails or call paid APIs.
+
+## Linting and formatting
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+```
+
+## Failure handling
 
 Each run writes one row to `run_logs`:
 
@@ -214,6 +261,10 @@ A run is `partial` when some channels failed but the digest was still sent.
 A run is `failed` when a required stage (all channels, digest, email) failed;
 in that case no misleading "No new articles today" email is sent after a
 Gemini failure.
+
+Network timeouts, bounded retries, and PostgreSQL connection errors are
+handled per run. Database sessions are closed via context managers. Failed
+Gemini requests raise `SummarizationError` and prevent email delivery.
 
 ## Troubleshooting
 
@@ -237,3 +288,4 @@ Gemini failure.
 - API keys and database credentials come from environment variables only.
 - Error messages and logs do not include API keys or database passwords.
 - Use a least-privilege database user for the application.
+- GitHub Actions uses read-only repository permissions.
