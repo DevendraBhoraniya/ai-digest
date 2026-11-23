@@ -27,9 +27,13 @@ HTTP_TIMEOUT_SECONDS = 15
 TRANSCRIPT_MAX_ATTEMPTS = 3
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
-# Either name may hold the database URL; NEON_DATABASE_URL wins when both are set.
-DATABASE_URL_VARS = ("NEON_DATABASE_URL", "DATABASE_URL")
-REQUIRED_ENV_VARS = ("GEMINI_API_KEY", "RESEND_API_KEY", "DIGEST_RECIPIENT_EMAIL")
+# Neon is the only supported PostgreSQL host; its connection string is required.
+REQUIRED_ENV_VARS = (
+    "GEMINI_API_KEY",
+    "RESEND_API_KEY",
+    "DIGEST_RECIPIENT_EMAIL",
+    "NEON_DATABASE_URL",
+)
 
 
 class ConfigError(RuntimeError):
@@ -39,7 +43,5 @@ class ConfigError(RuntimeError):
 def validate_config() -> None:
     """Raise ConfigError listing every missing variable, or return None."""
     missing = [name for name in REQUIRED_ENV_VARS if not os.getenv(name, "").strip()]
-    if not any(os.getenv(name, "").strip() for name in DATABASE_URL_VARS):
-        missing.append(f"one of {'/'.join(DATABASE_URL_VARS)}")
     if missing:
         raise ConfigError("Missing required environment variable(s): " + ", ".join(missing))

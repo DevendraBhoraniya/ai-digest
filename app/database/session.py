@@ -18,9 +18,9 @@ def _normalize_database_url(url: str) -> str:
     return url
 
 
-_raw_url = os.getenv("NEON_DATABASE_URL") or os.getenv(
-    "DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5432/ainews"
-)
+_raw_url = (
+    os.getenv("NEON_DATABASE_URL") or ""
+).strip() or "postgresql+psycopg2://postgres:postgres@localhost:5432/ainews"
 DATABASE_URL = _normalize_database_url(_raw_url)
 
 # The digest runs as a short-lived cron process, so there is nothing to pool:

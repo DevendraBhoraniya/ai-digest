@@ -104,8 +104,7 @@ used by the code:
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | yes* | PostgreSQL connection string |
-| `NEON_DATABASE_URL` | yes* | Alternative name; wins if both are set |
+| `NEON_DATABASE_URL` | yes | PostgreSQL (Neon) connection string |
 | `GEMINI_API_KEY` | yes | Google Gemini API key |
 | `RESEND_API_KEY` | yes | Resend API key |
 | `DIGEST_RECIPIENT_EMAIL` | yes | Daily digest recipient |
@@ -113,7 +112,8 @@ used by the code:
 | `PROXY_USERNAME` | no | Webshare proxy username for transcript fetching |
 | `PROXY_PASSWORD` | no | Webshare proxy password |
 
-\* At least one of `DATABASE_URL` / `NEON_DATABASE_URL` is required.
+`YOUTUBE_CHANNELS` is not an environment variable; channels are configured in
+`app/config.py`.
 
 `YOUTUBE_CHANNELS` is not an environment variable; channels are configured in
 `app/config.py`.
@@ -122,7 +122,7 @@ used by the code:
 
 1. Create a Neon project and database.
 2. Copy the connection string.
-3. Set it as `DATABASE_URL` or `NEON_DATABASE_URL`.
+3. Set it as `NEON_DATABASE_URL`.
 4. Create tables (idempotent, non-destructive):
 
 ```bash
@@ -199,7 +199,7 @@ GitHub Repository → Settings → Secrets and variables → Actions → New rep
 
 Required secrets:
 
-- `DATABASE_URL` or `NEON_DATABASE_URL`
+- `NEON_DATABASE_URL`
 - `GEMINI_API_KEY`
 - `RESEND_API_KEY`
 - `DIGEST_RECIPIENT_EMAIL`

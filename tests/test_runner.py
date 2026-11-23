@@ -28,7 +28,7 @@ def configured(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-gemini")
     monkeypatch.setenv("RESEND_API_KEY", "test-resend")
     monkeypatch.setenv("DIGEST_RECIPIENT_EMAIL", "reader@example.com")
-    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg2://user:pass@localhost/db")
+    monkeypatch.setenv("NEON_DATABASE_URL", "postgresql+psycopg2://user:pass@localhost/db")
 
 
 def _video(video_id: str, channel_id: str = "chan") -> runner.ChannelVideo:
