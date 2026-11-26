@@ -67,8 +67,17 @@ def send_digest(html: str, to_email: str, subject: str = "Daily AI News Digest")
         except Exception as exc:
             last_exc = exc
             if _is_retryable_error(exc) and attempt < EMAIL_MAX_RETRIES:
-                delay = min(EMAIL_BASE_DELAY * (2**attempt) + random.uniform(0, 0.5), EMAIL_MAX_DELAY)
-                logger.warning("email send failed (%s), retrying in %.1fs (attempt %d/%d)", exc, delay, attempt + 1, EMAIL_MAX_RETRIES)
+                delay = min(
+                    EMAIL_BASE_DELAY * (2**attempt) + random.uniform(0, 0.5),
+                    EMAIL_MAX_DELAY,
+                )
+                logger.warning(
+                    "email send failed (%s), retrying in %.1fs (attempt %d/%d)",
+                    exc,
+                    delay,
+                    attempt + 1,
+                    EMAIL_MAX_RETRIES,
+                )
                 time.sleep(delay)
                 continue
             logger.error("email send failed permanently: %s", exc)
