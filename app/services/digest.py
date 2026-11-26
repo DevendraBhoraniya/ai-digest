@@ -7,6 +7,7 @@ import html
 import logging
 from datetime import datetime, timezone
 
+from app.config import CHANNEL_NAMES
 from app.database.repository import get_recent_videos
 from app.database.session import SessionLocal
 from app.services.llm import SummarizationError, summarize_articles
@@ -24,6 +25,8 @@ def collect_articles(hours: int = 24) -> list[dict]:
                 "url": row.url,
                 "transcript": row.transcript,
                 "description": row.description,
+                "channel_id": row.channel_id,
+                "channel_name": CHANNEL_NAMES.get(row.channel_id, row.channel_id),
             }
             for row in rows
         ]
@@ -66,10 +69,16 @@ def render_digest(items: list[dict]) -> str:
         url = html.escape(item["url"])
         title = html.escape(item["title"])
         snippet = html.escape(item["snippet"])
+        channel = html.escape(item.get("channel_name", ""))
+        channel_html = (
+            f'<span style="color:#6b7280;font-size:12px;font-weight:500;margin-right:8px;text-transform:uppercase;letter-spacing:0.02em;">{channel}</span>'
+            if channel
+            else ""
+        )
         cards.append(
             f"""<tr>
   <td style="padding:20px 0 20px 0;border-bottom:1px solid #e5e7eb;">
-    <a href="{url}" style="color:#111827;text-decoration:none;font-weight:600;font-size:17px;line-height:1.3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{title}</a>
+    <a href="{url}" style="color:#111827;text-decoration:none;font-weight:600;font-size:17px;line-height:1.3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{channel_html}{title}</a>
     <p style="margin:8px 0 12px 0;color:#4b5563;font-size:14px;line-height:1.6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{snippet}</p>
     <a href="{url}" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Read more &rarr;</a>
   </td>

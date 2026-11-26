@@ -21,6 +21,22 @@ YOUTUBE_CHANNELS = [
     "UCbfYPyITQ-7l4upoX8nvctg",  # Two Minute Papers
 ]
 
+# Channel ID -> display name mapping (from comments above)
+CHANNEL_NAMES = {
+    "UCsBjURrPoezykLs9EqgamOA": "Fireship",
+    "UCn8ujwUInbJkBhffxqAPBVQ": "Dave Ebbelaar",
+    "UCawZsQWqfGSbCI5yjkdVkTA": "Matthew Berman",
+    "UC8wZnXYK_CGKlBcZp-GxYPA": "NeuralNine",
+    "UCS261lQDXjMvc8Jck-2CQEg": "Gyan Therapy",
+    "UC8butISFwT-Wl7EV0hUK0BQ": "freeCodeCamp",
+    "UCXUPKJO5MZQN11PqgIvyuvQ": "Andrej Karpathy",
+    "UCZHmQk67mSJgfCCTn7xBfew": "Yannic Kilcher",
+    "UCNJ1Ymd5yFuUPtn21xtRbbw": "AI Explained",
+    "UChpleBmo18P08aKCIgti38g": "Matt Wolfe",
+    "UCqcbQf6yw5KzRoDDcZ_wBSw": "Wes Roth",
+    "UCbfYPyITQ-7l4upoX8nvctg": "Two Minute Papers",
+}
+
 LOOKBACK_HOURS = 48
 DIGEST_HOURS = 24
 HTTP_TIMEOUT_SECONDS = 15
