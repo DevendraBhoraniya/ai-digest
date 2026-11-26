@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
+import time
 from pathlib import Path
 
 import requests
@@ -19,6 +21,12 @@ INTERESTS_PATH = Path(__file__).resolve().parent.parent / "prompts" / "interests
 API_KEY = os.getenv("GEMINI_API_KEY", "")
 MODEL = "gemini-3.5-flash"
 URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
+
+# Retry configuration for transient HTTP errors
+MAX_RETRIES = 5
+BASE_DELAY = 2.0  # seconds
+MAX_DELAY = 60.0  # seconds
+RETRY_STATUS_CODES = {429, 502, 503, 504}
 
 
 class SummarizationError(RuntimeError):
@@ -84,18 +92,36 @@ def summarize_articles(articles: list[dict]) -> list[dict]:
         "Api-Revision": "2026-05-20",
     }
 
-    try:
-        response = requests.post(URL, headers=headers, json=body, timeout=(10, 60))
-        response.raise_for_status()
-        data = response.json()
-    except requests.RequestException as exc:
-        status = getattr(exc.response, "status_code", None)
-        detail = f"HTTP {status}" if status else type(exc).__name__
-        logger.error("Gemini request failed: %s", detail)
-        raise SummarizationError(f"Gemini request failed ({detail})") from exc
-    except ValueError as exc:
-        logger.error("Gemini returned invalid JSON")
-        raise SummarizationError("Gemini returned invalid JSON") from exc
+    last_exc: Exception | None = None
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            response = requests.post(URL, headers=headers, json=body, timeout=(10, 60))
+            response.raise_for_status()
+            data = response.json()
+            break
+        except requests.RequestException as exc:
+            last_exc = exc
+            status = getattr(exc.response, "status_code", None)
+            if status in RETRY_STATUS_CODES and attempt < MAX_RETRIES:
+                delay = min(BASE_DELAY * (2**attempt) + random.uniform(0, 1), MAX_DELAY)
+                logger.warning(
+                    "Gemini request failed (HTTP %s), retrying in %.1fs (attempt %d/%d)",
+                    status,
+                    delay,
+                    attempt + 1,
+                    MAX_RETRIES,
+                )
+                time.sleep(delay)
+                continue
+            detail = f"HTTP {status}" if status else type(exc).__name__
+            logger.error("Gemini request failed: %s", detail)
+            raise SummarizationError(f"Gemini request failed ({detail})") from exc
+        except ValueError as exc:
+            logger.error("Gemini returned invalid JSON")
+            raise SummarizationError("Gemini returned invalid JSON") from exc
+    else:
+        # This should not be reached due to the raise in the loop, but kept for safety
+        raise SummarizationError(f"Gemini request failed after {MAX_RETRIES} retries") from last_exc
 
     items = _parse_response(data)
     if items is None:
