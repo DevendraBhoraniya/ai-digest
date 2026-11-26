@@ -79,7 +79,7 @@ def render_digest(items: list[dict]) -> str:
     rows = (
         "\n".join(cards)
         if cards
-        else '<tr><td style="padding:40px 0;text-align:center;color:#9ca3af;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;font-size:14px;">No new articles today.</td></tr>'
+        else "<tr><td style=\"padding:40px 0;text-align:center;color:#9ca3af;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;\">No new articles today.</td></tr>"
     )
 
     # Bulletproof: tables only, inline styles, no gradients, no flexbox, no border-radius, no box-shadow
@@ -115,7 +115,7 @@ def render_digest(items: list[dict]) -> str:
           <tr>
             <td style="padding:28px 32px 20px 32px;background-color:#1e3a8a;">
               <h1 style="margin:0;font-size:24px;font-weight:700;color:#ffffff;line-height:1.2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Daily AI News Digest</h1>
-              <p style="margin:8px 0 0;font-size:14px;color:#bfdbfe;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{today} &middot; {count} new item{'' if count == 1 else 's'}</p>
+              <p style="margin:8px 0 0;font-size:14px;color:#bfdbfe;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{today} &middot; {count} new item{"" if count == 1 else "s"}</p>
             </td>
           </tr>
           <!-- Content -->
